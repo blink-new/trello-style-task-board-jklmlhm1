@@ -350,7 +350,7 @@ export function Board({ board, onBoardUpdate }: BoardProps) {
     }
   };
 
-  const handleAddTask = async (columnId: string) => {
+  const handleAddTask = async (columnId: string, taskTitle: string) => {
     try {
       // Get the highest position in this column
       const columnTasks = tasks.filter(t => t.column_id === columnId);
@@ -360,7 +360,7 @@ export function Board({ board, onBoardUpdate }: BoardProps) {
         .from('tasks')
         .insert({
           column_id: columnId,
-          title: 'New Task',
+          title: taskTitle,
           position
         })
         .select()

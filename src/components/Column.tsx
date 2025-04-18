@@ -20,7 +20,7 @@ interface ColumnProps {
   tasks: Task[];
   onColumnUpdate: (id: string, title: string) => void;
   onColumnDelete: (id: string) => void;
-  onAddTask: (columnId: string) => void;
+  onAddTask: (columnId: string, title: string) => void;
   onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
   onDeleteTask: (taskId: string) => void;
 }
@@ -69,7 +69,7 @@ export function Column({
 
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
-      onAddTask(column.id);
+      onAddTask(column.id, newTaskTitle);
       setNewTaskTitle('');
       setIsAddingTask(false);
     }
