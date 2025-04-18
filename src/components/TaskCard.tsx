@@ -9,22 +9,37 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from './ui/dialog';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import { Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
 
 interface TaskCardProps {
   task: Task;
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
+  onDeleteTask?: (taskId: string) => void;
 }
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({ task, onUpdateTask, onDeleteTask }: TaskCardProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description || '');
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
   const {
     attributes,
@@ -48,8 +63,20 @@ export function TaskCard({ task }: TaskCardProps) {
   };
 
   const handleSave = () => {
-    // In a real app, we would save the changes to the database here
+    if (onUpdateTask) {
+      onUpdateTask(task.id, {
+        title,
+        description
+      });
+    }
     setIsEditing(false);
+  };
+
+  const handleDelete = () => {
+    if (onDeleteTask) {
+      onDeleteTask(task.id);
+      setIsDialogOpen(false);
+    }
   };
 
   return (
@@ -134,14 +161,54 @@ export function TaskCard({ task }: TaskCardProps) {
             {isEditing ? (
               <div className="flex gap-2">
                 <Button onClick={handleSave}>Save</Button>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => {
+                  setTitle(task.title);
+                  setDescription(task.description || '');
+                  setIsEditing(false);
+                }}>
+                  Cancel
+                </Button>
               </div>
             ) : (
-              <Button variant="outline" onClick={() => setIsEditing(true)}>Edit</Button>
+              <div className="flex gap-2 w-full justify-between">
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                  Edit
+                </Button>
+                {onDeleteTask && (
+                  <Button 
+                    variant="destructive" 
+                    size="icon"
+                    onClick={() => setIsDeleteAlertOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the task "{task.title}".
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

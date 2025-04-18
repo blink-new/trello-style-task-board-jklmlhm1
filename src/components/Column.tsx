@@ -21,9 +21,19 @@ interface ColumnProps {
   onColumnUpdate: (id: string, title: string) => void;
   onColumnDelete: (id: string) => void;
   onAddTask: (columnId: string) => void;
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void;
+  onDeleteTask: (taskId: string) => void;
 }
 
-export function Column({ column, tasks, onColumnUpdate, onColumnDelete, onAddTask }: ColumnProps) {
+export function Column({ 
+  column, 
+  tasks, 
+  onColumnUpdate, 
+  onColumnDelete, 
+  onAddTask,
+  onUpdateTask,
+  onDeleteTask
+}: ColumnProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(column.title);
   const [isAddingTask, setIsAddingTask] = useState(false);
@@ -137,7 +147,12 @@ export function Column({ column, tasks, onColumnUpdate, onColumnDelete, onAddTas
 
       <div className="flex-1 p-2 overflow-y-auto">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
+          <TaskCard 
+            key={task.id} 
+            task={task} 
+            onUpdateTask={onUpdateTask}
+            onDeleteTask={onDeleteTask}
+          />
         ))}
       </div>
 

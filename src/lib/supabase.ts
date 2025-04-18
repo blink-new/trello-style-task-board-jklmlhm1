@@ -10,9 +10,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+export type User = {
+  id: string;
+  email: string;
+};
+
 export type Board = {
   id: string;
   title: string;
+  user_id: string;
   created_at: string;
   updated_at: string;
 };

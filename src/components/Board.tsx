@@ -25,9 +25,14 @@ import { supabase, Board as BoardType, Column as ColumnType, Task } from '../lib
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { toast } from 'sonner';
 
-export function Board() {
-  const [board, setBoard] = useState<BoardType | null>(null);
+interface BoardProps {
+  board: BoardType;
+  onBoardUpdate: (board: BoardType) => void;
+}
+
+export function Board({ board, onBoardUpdate }: BoardProps) {
   const [columns, setColumns] = useState<ColumnType[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -49,33 +54,31 @@ export function Board() {
   );
 
   useEffect(() => {
-    fetchBoardData();
-  }, []);
+    if (board) {
+      fetchBoardData();
+    }
+  }, [board]);
 
   const fetchBoardData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Fetch the first board (for simplicity)
-      const { data: boardData, error: boardError } = await supabase
-        .from('boards')
-        .select('*')
-        .limit(1)
-        .single();
-      
-      if (boardError) throw boardError;
-      setBoard(boardData);
-      
       // Fetch columns for this board
       const { data: columnsData, error: columnsError } = await supabase
         .from('columns')
         .select('*')
-        .eq('board_id', boardData.id)
+        .eq('board_id', board.id)
         .order('position');
       
       if (columnsError) throw columnsError;
       setColumns(columnsData);
+      
+      if (columnsData.length === 0) {
+        setTasks([]);
+        setIsLoading(false);
+        return;
+      }
       
       // Fetch tasks for all columns
       const { data: tasksData, error: tasksError } = await supabase
@@ -107,6 +110,7 @@ export function Board() {
     } catch (err: any) {
       console.error('Error fetching board data:', err);
       setError(err.message || 'Failed to load board data');
+      toast.error('Failed to load board data');
     } finally {
       setIsLoading(false);
     }
@@ -193,6 +197,7 @@ export function Board() {
           }
         } catch (err) {
           console.error('Error updating column positions:', err);
+          toast.error('Failed to update column order');
           // Revert on error
           fetchBoardData();
         }
@@ -239,6 +244,7 @@ export function Board() {
           }
         } catch (err) {
           console.error('Error updating task positions:', err);
+          toast.error('Failed to update task order');
           // Revert on error
           fetchBoardData();
         }
@@ -255,6 +261,7 @@ export function Board() {
           fetchBoardData();
         } catch (err) {
           console.error('Error moving task to different column:', err);
+          toast.error('Failed to move task');
           // Revert on error
           fetchBoardData();
         }
@@ -266,22 +273,24 @@ export function Board() {
   };
 
   const handleUpdateBoard = async (title: string) => {
-    if (!board) return;
-    
     try {
+      const updatedBoard = { ...board, title, updated_at: new Date().toISOString() };
+      
       await supabase
         .from('boards')
         .update({ title, updated_at: new Date().toISOString() })
         .eq('id', board.id);
       
-      setBoard({ ...board, title });
+      onBoardUpdate(updatedBoard);
+      toast.success('Board updated successfully');
     } catch (err) {
       console.error('Error updating board:', err);
+      toast.error('Failed to update board');
     }
   };
 
   const handleAddColumn = async () => {
-    if (!board || !newColumnTitle.trim()) return;
+    if (!newColumnTitle.trim()) return;
     
     try {
       const position = columns.length;
@@ -301,8 +310,10 @@ export function Board() {
       setColumns([...columns, data]);
       setNewColumnTitle('');
       setIsAddColumnDialogOpen(false);
+      toast.success('Column added successfully');
     } catch (err) {
       console.error('Error adding column:', err);
+      toast.error('Failed to add column');
     }
   };
 
@@ -316,8 +327,10 @@ export function Board() {
       setColumns(columns.map(col => 
         col.id === id ? { ...col, title } : col
       ));
+      toast.success('Column updated successfully');
     } catch (err) {
       console.error('Error updating column:', err);
+      toast.error('Failed to update column');
     }
   };
 
@@ -330,8 +343,10 @@ export function Board() {
       
       setColumns(columns.filter(col => col.id !== id));
       setTasks(tasks.filter(task => task.column_id !== id));
+      toast.success('Column deleted successfully');
     } catch (err) {
       console.error('Error deleting column:', err);
+      toast.error('Failed to delete column');
     }
   };
 
@@ -354,14 +369,49 @@ export function Board() {
       if (error) throw error;
       
       setTasks([...tasks, { ...data, tags: [] }]);
+      toast.success('Task added successfully');
     } catch (err) {
       console.error('Error adding task:', err);
+      toast.error('Failed to add task');
+    }
+  };
+
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    try {
+      await supabase
+        .from('tasks')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', taskId);
+      
+      setTasks(tasks.map(task => 
+        task.id === taskId ? { ...task, ...updates } : task
+      ));
+      
+      toast.success('Task updated successfully');
+    } catch (err) {
+      console.error('Error updating task:', err);
+      toast.error('Failed to update task');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+      await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+      
+      setTasks(tasks.filter(task => task.id !== taskId));
+      toast.success('Task deleted successfully');
+    } catch (err) {
+      console.error('Error deleting task:', err);
+      toast.error('Failed to delete task');
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-[500px]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
@@ -369,7 +419,7 @@ export function Board() {
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen">
+      <div className="flex flex-col items-center justify-center h-[500px]">
         <h2 className="text-xl font-bold text-red-600 mb-4">Error Loading Board</h2>
         <p className="text-gray-700">{error}</p>
         <Button 
@@ -382,17 +432,8 @@ export function Board() {
     );
   }
 
-  if (!board) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <h2 className="text-xl font-bold mb-4">No Board Found</h2>
-        <p className="text-gray-700">Create a new board to get started.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-[500px] bg-gray-100 p-4 rounded-lg">
       <BoardHeader 
         board={board} 
         onBoardUpdate={handleUpdateBoard}
@@ -407,23 +448,37 @@ export function Board() {
           onDragOver={handleDragOver}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 min-h-[500px]">
-            <SortableContext
-              items={columns.map(col => col.id)}
-              strategy={horizontalListSortingStrategy}
-            >
-              {columns.map(column => (
-                <Column
-                  key={column.id}
-                  column={column}
-                  tasks={tasks.filter(task => task.column_id === column.id)}
-                  onColumnUpdate={handleUpdateColumn}
-                  onColumnDelete={handleDeleteColumn}
-                  onAddTask={handleAddTask}
-                />
-              ))}
-            </SortableContext>
-          </div>
+          {columns.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[400px] bg-white rounded-lg shadow-sm p-8">
+              <h3 className="text-xl font-medium mb-4">No Columns Yet</h3>
+              <p className="text-gray-600 mb-6 text-center">
+                Get started by adding your first column to organize your tasks
+              </p>
+              <Button onClick={() => setIsAddColumnDialogOpen(true)}>
+                Add Your First Column
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-4 min-h-[500px]">
+              <SortableContext
+                items={columns.map(col => col.id)}
+                strategy={horizontalListSortingStrategy}
+              >
+                {columns.map(column => (
+                  <Column
+                    key={column.id}
+                    column={column}
+                    tasks={tasks.filter(task => task.column_id === column.id)}
+                    onColumnUpdate={handleUpdateColumn}
+                    onColumnDelete={handleDeleteColumn}
+                    onAddTask={handleAddTask}
+                    onUpdateTask={handleUpdateTask}
+                    onDeleteTask={handleDeleteTask}
+                  />
+                ))}
+              </SortableContext>
+            </div>
+          )}
           
           <DragOverlay>
             {activeId && activeItem?.type === 'column' && (
@@ -433,10 +488,16 @@ export function Board() {
                 onColumnUpdate={handleUpdateColumn}
                 onColumnDelete={handleDeleteColumn}
                 onAddTask={handleAddTask}
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
               />
             )}
             {activeId && activeItem?.type === 'task' && (
-              <TaskCard task={tasks.find(task => task.id === activeId)!} />
+              <TaskCard 
+                task={tasks.find(task => task.id === activeId)!} 
+                onUpdateTask={handleUpdateTask}
+                onDeleteTask={handleDeleteTask}
+              />
             )}
           </DragOverlay>
         </DndContext>
@@ -456,7 +517,12 @@ export function Board() {
             />
           </div>
           <DialogFooter>
-            <Button onClick={handleAddColumn}>Add Column</Button>
+            <Button 
+              onClick={handleAddColumn}
+              disabled={!newColumnTitle.trim()}
+            >
+              Add Column
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
