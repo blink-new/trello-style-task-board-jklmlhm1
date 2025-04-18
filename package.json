@@ -60,7 +60,10 @@
     "recharts": "^2.15.2",
     "sonner": "^2.0.3",
     "vaul": "^1.1.2",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "@supabase/supabase-js": "latest",
+    "@dnd-kit/sortable": "latest",
+    "@dnd-kit/utilities": "latest"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
